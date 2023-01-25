@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Stock Information</title>
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" integrity="sha384-B0vY8DdI+ZLkfEo9X7Vu8WZO2T2T1xZc0KyvL8WfCJ7VuLpahZvN9Wf8FtA1GtZL" crossorigin="anonymous">
+	<!-- jQuery -->
+	<script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvSa1FmFo=" crossorigin="anonymous"></script>
+	<!-- Highcharts -->
+	<script src="https://code.highcharts.com/highcharts.js"></script>
+</head>
+<body>
+	
+	<form>
+		<div class="container">
+		<h1 class="text-center my-5">Stock Information</h1>
+		<form>
+			<div class="form-group">
+				<label for="stock-symbol">Enter a stock symbol:</label>
+				<input type="text" class="form-control" id="stock-symbol" name="stock-symbol" autocomplete="off">
+			</div>
+			<div id="suggestions" class="mb-3"></div>
+			<button type="submit" class="btn btn-primary">Submit</button>
+		</form>
+		<div id="stock-data" class="my-5"></div>
+	</div>
+
+	<script>
+		const options = {
+			method: 'GET',
+			headers: {
+				'X-RapidAPI-Key': 'a23c30dbb4msh1b9fc2035758d85p1e781djsn840102056e57',
+				'X-RapidAPI-Host': 'alpha-vantage.p.rapidapi.com'
+			}
+		};
+
+		const form = document.querySelector('form');
+		const stockSymbolInput = document.getElementById('stock-symbol');
+		const suggestionsDiv = document.getElementById('suggestions');
+
+		stockSymbolInput.addEventListener('input', () => {
+			const stockSymbol = stockSymbolInput.value;
+			fetch(`https://alpha-vantage.p.rapidapi.com/query?function=SYMBOL_SEARCH&keywords=${stockSymbol}`, options)
+				.then(response => response.json())
+				.then(response => {
+					const bestMatches = response['bestMatches'];
+					suggestionsDiv.innerHTML = '';
+					bestMatches.forEach(match => {
+						const symbol = match['1. symbol'];
+						const name = match['2. name'];
+						const suggestion = document.createElement('div');
+						suggestion.innerHTML = `${symbol} - ${name}`;
+						suggestion.addEventListener('click', () => {
+							stockSymbolInput.value = symbol;
+							suggestionsDiv.innerHTML = '';
+						});
+						suggestionsDiv.appendChild(suggestion);
+					});
+				})
+				.catch(err => console.error(err));
+		});
+
+		form.addEventListener('submit', event => {
+			event.preventDefault();
+
+			const stockSymbol = stockSymbolInput.value;
+			fetch(`https://alpha-vantage.p.rapidapi.com/query?interval=5min&function=TIME_SERIES_INTRADAY&symbol=${stockSymbol}&datatype=json&output_size=compact`, options)
+				.then(response => response.json())
+				.then(response => {
+					const stockData = response['Time Series (5min)'];
+					const keys = Object.keys(stockData);
+					const latestData = stockData[keys[0]];
+
+					const stockDataDiv = document.getElementById('stock-data');
+					stockDataDiv.innerHTML = `<p>Latest stock data for ${stockSymbol}:</p>
+											  <ul>
+											  	<li>Open: ${latestData['1. open']}</li>
+											  	<li>High: ${latestData['2. high']}</li>
+											  	<li>Low: ${latestData['3. low']}</li>
+											  	<li>Close: ${latestData['4. close']}</li>
+											  	<li>Volume: ${latestData['5. volume']}</li>
+											  </ul>`;
+				
+				})
+				.catch(err => console.error(err));
+		});
+	</script>
+</body>
+</html>
